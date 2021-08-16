@@ -120,13 +120,23 @@ class DataValueCalculator @Inject constructor(
         }
 
         if (dataValues.isEmpty()) return 0.0
-        return when (type) {
+        val result = when (type) {
             AggregationType.SUM -> values.sum()
             AggregationType.AVERAGE -> values.average()
             AggregationType.MIN -> values.min() ?: 0.0
             AggregationType.MAX -> values.max() ?: 0.0
             else -> values.sum()
         }
+        initParams()
+        return result
+    }
+
+    private fun initParams() {
+        dataElement = null
+        period = null
+        coc = null
+        date = null
+        type = AggregationType.SUM
     }
 
     private fun getQueryBuilder(): WhereClauseBuilder {
