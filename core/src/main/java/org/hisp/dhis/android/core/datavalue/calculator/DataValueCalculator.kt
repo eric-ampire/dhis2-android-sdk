@@ -30,6 +30,8 @@ package org.hisp.dhis.android.core.datavalue.calculator
 
 import dagger.Reusable
 import org.hisp.dhis.android.core.arch.db.querybuilders.internal.WhereClauseBuilder
+import org.hisp.dhis.android.core.arch.helpers.DateUtils
+import org.hisp.dhis.android.core.arch.repositories.collection.BaseRepository
 import org.hisp.dhis.android.core.common.AggregationType
 import org.hisp.dhis.android.core.datavalue.DataValueTableInfo
 import org.hisp.dhis.android.core.datavalue.internal.DataValueStore
@@ -48,27 +50,44 @@ import javax.inject.Inject
  *
  */
 @Reusable
-class DataValueCalculator @Inject constructor() {
+class DataValueCalculator @Inject constructor(
+    val store: DataValueStore
+) : BaseRepository {
+
+    private var type: AggregationType = AggregationType.SUM
+    private var date: Date? = null
+    private var coc: String? = null
+    private var period: String? = null
+    private var dataElement: String? = null
+
 
     /**
      * Filter the dataValues whose dataElement match exactly this parameter
      */
-    fun withDataElement(dataElement: String): DataValueCalculator = TODO()
+    fun withDataElement(dataElement: String): DataValueCalculator = apply {
+        this.dataElement = dataElement
+    }
 
     /**
      * Filter the dataValues whose period match exactly this parameter
      */
-    fun withPeriod(period: String): DataValueCalculator = TODO()
+    fun withPeriod(period: String): DataValueCalculator = apply {
+        this.period = period
+    }
 
     /**
      * Filter the dataValues whose categoryOptionCombo match exactly this parameter
      */
-    fun withCategoryOptionCombo(coc: String): DataValueCalculator = TODO()
+    fun withCategoryOptionCombo(coc: String): DataValueCalculator = apply {
+        this.coc = coc
+    }
 
     /**
      * Filter the dataValues whose created date is after this parameter.
      */
-    fun withCreatedAfter(date: Date): DataValueCalculator = TODO()
+    fun withCreatedAfter(date: Date): DataValueCalculator = apply {
+        this.date = date
+    }
 
     /**
      * Accepted aggregationTypes:
@@ -80,13 +99,45 @@ class DataValueCalculator @Inject constructor() {
      * If the user does not provide an aggregation type or the aggregation type is not accepted, it must default
      * to [AggregationType.SUM]
      */
-    fun withAggregationType(type: AggregationType): DataValueCalculator = TODO()
+    fun withAggregationType(type: AggregationType): DataValueCalculator = apply {
+        this.type = type
+    }
 
     /**
      * It must return the evaluation of the existing data values using the parameters provided.
      * If there is no matching dataValues, it must return a 0.0.
      * If any value cannot be converted to float, it must return a 0.0.
      */
-    fun evaluate(): Float = TODO()
+    fun evaluate(): Double {
+        val builder = getQueryBuilder()
+        val dataValues = if (builder.isEmpty) {
+            store.selectAll()
+        } else {
+            store.selectWhere(builder.build())
+        }
+        val values = dataValues.map { dataValue ->
+            dataValue.value()?.toDoubleOrNull() ?: 0.0
+        }
 
+        if (dataValues.isEmpty()) return 0.0
+        return when (type) {
+            AggregationType.SUM -> values.sum()
+            AggregationType.AVERAGE -> values.average()
+            AggregationType.MIN -> values.min() ?: 0.0
+            AggregationType.MAX -> values.max() ?: 0.0
+            else -> values.sum()
+        }
+    }
+
+    private fun getQueryBuilder(): WhereClauseBuilder {
+        return WhereClauseBuilder().apply {
+            if (period != null) appendKeyStringValue(DataValueTableInfo.Columns.PERIOD, period)
+            if (coc != null) appendKeyStringValue(DataValueTableInfo.Columns.CATEGORY_OPTION_COMBO, coc)
+            if (dataElement != null) appendKeyStringValue(DataValueTableInfo.Columns.DATA_ELEMENT, dataElement)
+            if (date != null) {
+                val createdDate = DateUtils.DATE_FORMAT.format(date!!)
+                appendKeyGreaterOrEqStringValue(DataValueTableInfo.Columns.CREATED, createdDate)
+            }
+        }
+    }
 }
