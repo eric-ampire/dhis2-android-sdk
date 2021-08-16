@@ -145,18 +145,6 @@ class DataValueCalculator @Inject constructor(
     private fun getQueryBuilder(): WhereClauseBuilder {
         return WhereClauseBuilder().apply {
             if (period != null) appendKeyStringValue(DataValueTableInfo.Columns.PERIOD, period)
-        }.apply {
-            if (coc != null) appendKeyStringValue(DataValueTableInfo.Columns.CATEGORY_OPTION_COMBO, coc)
-        }.apply {
-            if (dataElement != null) appendKeyStringValue(DataValueTableInfo.Columns.DATA_ELEMENT, dataElement)
-        }.apply {
-            if (date != null) {
-                val createdDate = DateUtils.DATE_FORMAT.format(date!!)
-                appendKeyGreaterOrEqStringValue(DataValueTableInfo.Columns.CREATED, createdDate)
-            }
-        }
-        return WhereClauseBuilder().apply {
-            if (period != null) appendKeyStringValue(DataValueTableInfo.Columns.PERIOD, period)
             if (coc != null) appendKeyStringValue(DataValueTableInfo.Columns.CATEGORY_OPTION_COMBO, coc)
             if (dataElement != null) appendKeyStringValue(DataValueTableInfo.Columns.DATA_ELEMENT, dataElement)
             if (date != null) {
